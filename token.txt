@@ -482,6 +482,45 @@ $r = x($argv[1], $argv[2]); print $r;
 
 ------------------------------------------------------------------------------------------------------------------------------
 
+LEVEL07
+
+- ls -l : -rwsr-sr-x 1 flag07 level07 8805 Mar  5  2016 level07
+
+- cat level07 : mot cle : LOGNAME/bin/echo %s 0  
+        usr/bin  -> premier fichier s'apelle [ et contient du charabia avec plein de %s
+        rien de tres concluant
+
+- ./level 7 renvoie level07 quoi que soit passer en argument
+        arg[0] quelque part ?
+        j'ai les droit d'execution sur ./level07
+
+- env : LOGNAME=level07
+
+- LOGNAME=test ./level07
+        -> test            -> Donc LOGNAME est le arg[0] de ./level07 et il a l'air de faire un echo LOGNAME
+
+-Test si un script dans /tmp peut lance ./level07
+
+        level07@SnowCrash:~$ cd /tmp
+        level07@SnowCrash:/tmp$ mkdir moi
+        level07@SnowCrash:/tmp$ cd moi
+        level07@SnowCrash:/tmp/moi$ vim getflag
+        level07@SnowCrash:/tmp/moi$ cat getflag
+        #!/bin/bash
+        /home/flag/flag07/getflag
+        level07@SnowCrash:/tmp/moi$ chmod +x getflag
+        level07@SnowCrash:/tmp/moi$ cd ~
+        level07@SnowCrash:~$ LOGNAME=/tmp/moi ./level07
+        ->  /tmp/moi
+
+        Donc ./level07 ne lance pas directement $LOGNAME/getflag  -> changement de piste
+
+-
+
+
+
+
+
 
 
     
