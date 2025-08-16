@@ -513,10 +513,154 @@ LEVEL07
         level07@SnowCrash:~$ LOGNAME=/tmp/moi ./level07
         ->  /tmp/moi
 
-        Donc ./level07 ne lance pas directement $LOGNAME/getflag  -> changement de piste
+        Donc ./level07 ne lance pas directement $LOGNAME/getflag
 
--
+-Test si on ne fait pas de fichier mais ecrivons directement LOGNAME=getflag ->renvoie getflag
+    avec des '' ? -> idem
+    avec '``' pour comprendre que c'est un executable -> Check flag.Here is your token : fiumuikeil55xe9cu4dood66h
 
+- su level08 : fiumuikeil55xe9cu4dood66h
+
+
+------------------------------------------------------------------------------------------------------------------------
+
+LEVEL08
+
+- ls -l  total 16
+        -rwsr-s---+ 1 flag08 level08 8617 Mar  5  2016 level08
+        -rw-------  1 flag08 flag08    26 Mar  5  2016 token
+
+
+- ./level08 
+    ./level08 [file to read]
+ ./level08 token
+    You may not access 'token'
+
+- Il faut recuperer des droit ou contourner le probleme pour avoir acces a token
+     chmod -r token
+        chmod: changing permissions of `token': Operation not permitted
+
+-On peut lire token mais pas l'utiliser 
+
+-Idee : le copier sous un autre nom dans /tmp et le lire avec ./level08
+    cd /tmp
+    ln -s /home/user/level08/token leurre
+    cd ~
+    ./level08 /tmp/leurre
+        quif5eloekouj29ke0vouxean
+
+- su level09 : quif5eloekouj29ke0vouxean -> pas le mot de passe !
+
+- su flag08 : quif5eloekouj29ke0vouxean -> Don't forget to launch getflag !
+
+- getflag : 25749xKZ8L7DkSCwJkT9dyv6f
+
+- su level09 : 25749xKZ8L7DkSCwJkT9dyv6f
+
+-------------------------------------------------------------------------------------------------------------------
+
+LEVEL09
+
+- ls -l total 12
+    -rwsr-sr-x 1 flag09 level09 7640 Mar  5  2016 level09
+    ----r--r-- 1 flag09 level09   26 Mar  5  2016 token
+
+
+-Meme principe que le precedant mais avec des droit different.
+
+- ./level09 
+    You need to provied only one arg.
+  ./level09 token
+    tpmhr
+
+- cat token
+    f4kmm6p|=�p�n��DB�Du{��
+
+- tpmhr -> f4kmm6p|=�p�n��DB�Du{��
+
+Analyse de ./level09 :
+                        strings ./level09
+                            putchar
+                            stdout
+                            fputc
+                            getenv
+                            stderr
+                            ptrace
+                            fwrite
+                            open
+
+                            PTRh
+                            UWVS
+                            [^_]
+                            You should not reverse this
+                            LD_PRELOAD
+                            Injection Linked lib detected exit..
+                            /etc/ld.so.preload
+                            /proc/self/maps
+                            /proc/self/maps is unaccessible, probably a LD_PRELOAD attempt exit..
+                            libc
+                            You need to provied only one arg.
+                            00000000 00:00 0
+                            LD_PRELOAD detected through memory maps exit ..
+                            ;*2$"$
+
+
+- You should not reverse this ? Cryptage, il faut trouver un patern ? (tpmhr -> f4kmm6p|=�p�n��DB�Du{��)
+
+-Idee : chercher un paterne avec ./level09 abcd 
+    ./level09 abcde
+        acegi
+    ./level09 00
+        01
+    ./level09 000000000000000000000000000000000000000000000
+        0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\
+    ./level09 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+        0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~�������������������������������������������������������������������������������������������
+    ./level09 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        abcdefghijklmnopqrstuvwxyz{|}~��������������������������������������
+
+- Decale de +1 chaque caractere en suivant ascii ?
+
+-Test : Faire un programme dans /tmp qui prendra token en argument et tout decaler de +1 a chaque char.
+
+        #include <unistd.h>
+
+        void ft_putchar(char c)
+        { write(1, &c, 1); }
+
+        int main(int argc, char **argv)
+        { if (argc != 2) return (1);
+        size_t i = 0;
+        while (argv[1][i])
+            ft_putchar(argv[1][i] - i++);
+        ft_putchar('\n'); }
+
+
+- gcc test.c
+  ./a.out ~/token
+    /gmja*ol]i%aYiW] (a[VOW  -> bizzare ?  flag09 ? -> non
+
+- Je passais le chemin du fichier, donc ./a.out interprette /home/user/token, et pas son contenue
+
+- ./a.out `cat ~/token`
+    f3iji1ju5yuevaus41q1afiuq
+
+-su levle10 : f3iji1ju5yuevaus41q1afiuq -> non
+
+-su flag09 : f3iji1ju5yuevaus41q1afiuq
+    Don't forget to launch getflag !
+- getflag
+    Check flag.Here is your token : s5cAJpM8ev6XHw998pRWG728z
+
+    -su level10 : s5cAJpM8ev6XHw998pRWG728z
+
+----------------------------------------------------------------------------------------------------------------
+
+LEVEL10
+
+ ls -l total 16
+    -rwsr-sr-x+ 1 flag10 level10 10817 Mar  5  2016 level10
+    -rw-------  1 flag10 flag10     26 Mar  5  2016 token
 
 
 
